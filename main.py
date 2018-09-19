@@ -7,17 +7,6 @@ from tkinter import *
 from tkinter import ttk, messagebox, Event
 from fileTool import fileOption
 
-'''
-# 目前简单实现了搜索显示功能
-### 两种实现思路：
-#   1.直接遍历、匹配搜索
-#   2.遍历之后，存入数据库文件，再从数据库中检索
-# 从数据库中搜索，如何及时更新数据，暂时没有解决
-### TODO
-# 搜索结果数量太大时，UI更新迟缓，可以加入分页功能
-# 双击打开路径，或双击打开文件
-# 批量重命名
-'''
 
 class App():
     def __init__(self, master):
@@ -109,6 +98,7 @@ class App():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         task = asyncio.ensure_future(coroutine)
+        # 线程完成之后，刷新 UI
         task.add_done_callback(self.show)
         loop.run_until_complete(task)
         print("done.")
@@ -120,6 +110,7 @@ class App():
         self.list_all_file = []
         c,d,e,f = self.C.get(), self.D.get(), self.E.get(), self.F.get()
         
+        # 当用户没有具体选择哪个盘时，我们将搜索范围定为除 C 盘(太慢了)外的所有盘
         if c==0 and d==0 and e==0 and f==0:
             c,d,e,f = 0,1,1,1
         if c:
@@ -154,6 +145,7 @@ class App():
             if re.search(query_,f[1]):
                 self.result.append(f)
     
+    # 从数据库中搜索，因为为解决更新的问题，暂时不实用
     def searchFile_with_db(self):
         self.result = []
         query_ = '%' + self.query.get() + '%'
@@ -217,10 +209,9 @@ class App():
     def renameFiles(self):
         pass
 
-# <class 'tkinter.Event'>
-# <class 'NoneType'>
-
     def flashState(self, event=None):
+        # 该方法在两种情况下会被调用，搜索任务完成时，及用户点击显示条目时
+        # 这里加入一个判断，当 event 为 tkinter.Event 类时，说明调用为后者，否则为前者
         if not isinstance(event,Event):
             self.str_process_bar.set("search done.")
         self.str_search_count.set(str(len(self.result)))

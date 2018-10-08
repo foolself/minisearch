@@ -16,21 +16,8 @@ class App():
         self.query = StringVar()
         self.list_all_file = []
         self.result = []
-        self.list_file_box = None
-        self.path_root = []
+        # self.list_file_box = None
         self.myFileOption = fileOption()
-        self.C = IntVar()
-        self.D = IntVar()
-        self.E = IntVar()
-        self.F = IntVar()
-        self.PATH_C = "C:\\"
-        self.PATH_D = "D:\\"
-        self.PATH_E = "E:\\"
-        self.PATH_F = "F:\\"
-        self.list_file_c = []
-        self.list_file_d = []
-        self.list_file_e = []
-        self.list_file_f = []
         self.FLAG_SIZE_SORT = False
         self.FLAG_TASK = 0
         
@@ -64,6 +51,11 @@ class App():
         Label(f_state, textvariable=self.str_select_count).pack(side=LEFT)
         Label(f_state, text="    process: ").pack(side=LEFT)
         Label(f_state, textvariable=self.str_process_bar).pack(side=LEFT)
+        Button(f_state, text="<", command=self.toNextPage).pack(side=RIGHT)
+        self.int_page = IntVar()
+        self.int_page.set(1)
+        Label(f_state, textvariable=self.int_page).pack(side=RIGHT)
+        Button(f_state, text="<", command=self.toPreviousPage).pack(side=RIGHT)
 
         f_path = Frame(f_top, relief=GROOVE, bd=2)
         f_path.pack(side=LEFT)
@@ -72,7 +64,7 @@ class App():
         entry_path = Entry(f_path, textvariable=self.input_path)
         entry_path.pack(side=LEFT)
         entry_path.bind("<Return>",self.doTask_loadPath)
-        btn_path = Button(f_path, text=" Go ", command=self.doTask_loadPath).pack(side=LEFT)
+        Button(f_path, text=" Go->", command=self.doTask_loadPath).pack(side=LEFT)
 
         f_search = Frame(f_top, relief=GROOVE,bd=2)
         f_search.pack(side=LEFT)
@@ -80,15 +72,20 @@ class App():
         f_search_1.pack(side=TOP)
         f_search_2 = Frame(f_search, relief=GROOVE, bd=2)
         f_search_2.pack(side=TOP)
-        label_search = Label(f_search_1, text="search: ").pack(side=LEFT)
+        Label(f_search_1, text="search: ").pack(side=LEFT)
         entry_search = Entry(f_search_1, textvariable=self.query)
         entry_search.pack(side=LEFT)
         entry_search.bind("<Return>",self.doTask_search)
-        btn_search = Button(f_search_1, text=" Go ", command=self.doTask_search).pack(side=LEFT)
-        ckbtn_C = Checkbutton(f_search_2, text="C盘", variable=self.C).pack(side=LEFT)
-        ckbtn_D = Checkbutton(f_search_2, text="D盘", variable=self.D).pack(side=LEFT)
-        ckbtn_E = Checkbutton(f_search_2, text="E盘", variable=self.E).pack(side=LEFT)
-        ckbtn_F = Checkbutton(f_search_2, text="F盘", variable=self.F).pack(side=LEFT)
+        Button(f_search_1, text=" Go->", command=self.doTask_search).pack(side=LEFT)
+        Button(f_search_1, text="清除缓存", command=self.doFlushCache).pack(side=LEFT)
+        
+        self.list_diskSymbol = self.myFileOption.getDiskSymbol()
+        self.list_diskSymbol_flag = []
+        self.list_file_each_disk = []
+        for i, diskSymbol in enumerate(self.list_diskSymbol):
+            self.list_diskSymbol_flag.append(IntVar())
+            self.list_file_each_disk.append([])
+            Checkbutton(f_search_2, text=diskSymbol, variable=self.list_diskSymbol_flag[i]).pack(side=LEFT)
 
         self.scrollbar = Scrollbar(f_center)
         # self.list_file_box = Listbox(f_center, selectmode=MULTIPLE, yscrollcommand=self.scrollbar.set)
@@ -126,30 +123,17 @@ class App():
         self.FLAG_TASK = 1
         Thread(target=self._async_thread,args=(0,)).start()
 
+    def doFlushCache(self):
+        for i in range(len(self.list_file_each_disk)):
+            self.list_file_each_disk[i] = []
 
     def getAllFiles(self):
         self.list_all_file = []
-        c,d,e,f = self.C.get(), self.D.get(), self.E.get(), self.F.get()
-        
-        # 当用户没有具体选择哪个盘时，我们将搜索范围定为除 C 盘(太慢了)外的所有盘
-        if c==0 and d==0 and e==0 and f==0:
-            c,d,e,f = 0,1,1,1
-        if c:
-            if not self.list_file_c:
-                self.list_file_c = self.myFileOption.getListFiles(self.PATH_C)
-            self.list_all_file = self.list_all_file + self.list_file_c
-        if d:
-            if not self.list_file_d:
-                self.list_file_d = self.myFileOption.getListFiles(self.PATH_D)
-            self.list_all_file = self.list_all_file + self.list_file_d
-        if e:
-            if not self.list_file_e:
-                self.list_file_e = self.myFileOption.getListFiles(self.PATH_E)
-            self.list_all_file = self.list_all_file + self.list_file_e
-        if f:
-            if not self.list_file_f:
-                self.list_file_f = self.myFileOption.getListFiles(self.PATH_F)
-            self.list_all_file = self.list_all_file + self.list_file_f
+        for i, rootPath in enumerate(self.list_diskSymbol):
+            if self.list_diskSymbol_flag[i].get():
+                if not self.list_file_each_disk[i]:
+                    self.list_file_each_disk[i] = self.myFileOption.getListFiles(rootPath)
+                self.list_all_file = self.list_all_file + self.list_file_each_disk[i]
         print("getAllFiles() done.")
         return self.list_all_file
     
@@ -192,10 +176,24 @@ class App():
     def sortByCTime(self):
         self.sort(6)
 
+    def toNextPage(self, event=None):
+        if self.int_page.get() + 1 > len(self.result) // 100 + 1:
+            print("out of pages")
+            return None
+        self.int_page.set(self.int_page.get() + 1)
+        self.show()
+
+    def toPreviousPage(self, event=None):
+        if self.int_page.get() - 1 < 1:
+            print("out of pages")
+            return None
+        self.int_page.set(self.int_page.get() - 1)
+        self.show()
+
     def show(self, future=None):
         for i in self.tree.get_children():
             self.tree.delete(i)
-        for item in self.result[:100]:
+        for item in self.result[100 * (self.int_page.get() - 1) : 100 * self.int_page.get()]:
             self.tree.insert('','end',values=item[1:])
         self.flashState()
 
@@ -239,7 +237,7 @@ class App():
         self.master.wait_window(renameDialog)
 
     def flashState(self, event=None):
-        # 该方法在两种情况下会被调用，搜索任务完成时，及用户点击显示条目时
+        # 该方法在两种情况下会被调用，搜索任务完成时，及用户点示条目时
         # 这里加入一个判断，当 event 为 tkinter.Event 类时，说明调用为后者，否则为前者
         if not isinstance(event,Event):
             self.str_process_bar.set("search done.")

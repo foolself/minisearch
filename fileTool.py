@@ -1,4 +1,5 @@
 import os
+import ctypes
 import time
 class fileOption(object):
     def __init__(self):
@@ -55,13 +56,26 @@ class fileOption(object):
     def printFileList(self):
         for f in self.list_file:
             print(f)
+    
+    def getDiskSymbol(self):
+        list_ds = []
+        IpBuffer = ctypes.create_string_buffer(78)
+        ctypes.windll.kernel32.GetLogicalDriveStringsA(ctypes.sizeof(IpBuffer), IpBuffer)
+        vol = IpBuffer.raw.split(b'\x00')
+        # for i in vol:
+        #     print(i)
+        for i in range(65, 91):
+            vol = chr(i) + ":"
+            if os.path.isdir(vol):
+                list_ds.append(vol + "\\")
+        return list_ds
 
 def main():
     myFileOption = fileOption()
     # list_ = myFileOption.getListFiles("F:\\")
     # list_ = myFileOption.listDir("F:\\code")
     # myFileOption.printFileList()
-    myFileOption.renameFiles(["E:\\test\\sdgdg.txt","E:\\test\\32534.txt"],["E:\\test\\test_1.txt","E:\\test\\test_2.txt"])
-
+    # myFileOption.renameFiles(["E:\\test\\sdgdg.txt","E:\\test\\32534.txt"],["E:\\test\\test_1.txt","E:\\test\\test_2.txt"])
+    print(myFileOption.getDiskSymbol())
 if __name__ == '__main__':
     main()

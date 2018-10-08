@@ -35,17 +35,17 @@ class RenameDialog(Toplevel):
         self.str_name_1 = StringVar()
         self.str_name_2 = StringVar()
         self.str_name_3 = StringVar()
-        entry_name_1 = Entry(f_top, textvariable=self.str_name_1)
-        entry_name_1.pack(side=LEFT)
-        self.gen_choose = ttk.Combobox(f_top, textvariable=self.str_name_2, state="readonly")
+        self.entry_name_1 = Entry(f_top, textvariable=self.str_name_1, state=DISABLED)
+        self.entry_name_1.pack(side=LEFT)
+        self.gen_choose = ttk.Combobox(f_top, textvariable=self.str_name_2, state="readonly", command=self.doCk)
         self.gen_choose['values'] = (self.FLAG_GEN_1, self.FLAG_GEN_2, self.FLAG_GEN_3)
         self.gen_choose.current(0)
         self.gen_choose.pack(side=LEFT)
         Label(f_top, text=" . ").pack(side=LEFT)
-        entry_name_3 = Entry(f_top, textvariable=self.str_name_3)
-        entry_name_3.pack(side=LEFT)
-        entry_name_1.bind("<Return>",self.doCk)
-        entry_name_3.bind("<Return>",self.doCk)
+        self.entry_name_3 = Entry(f_top, textvariable=self.str_name_3, state=DISABLED)
+        self.entry_name_3.pack(side=LEFT)
+        self.entry_name_1.bind("<Return>",self.doCk)
+        self.entry_name_3.bind("<Return>",self.doCk)
 
 
         Label(f_listFile, text="文件原名：").pack(side=TOP)
@@ -53,7 +53,8 @@ class RenameDialog(Toplevel):
 
         self.text_input = Text(f_input, height=30,width=30)
         self.text_input.pack(side=TOP)
-        btn_doRe = Button(f_sub, text="rename all file", command=self.doRename).pack(side=TOP)
+        self.btn_doRe = Button(f_sub, text="重命名", command=self.doRename)
+        self.btn_doRe.pack(side=TOP)
         for file in self.list_files:
             self.list_fileParentPath.append(os.path.split(file)[0])
             self.list_fileName.append(os.path.split(file)[1])
@@ -64,8 +65,10 @@ class RenameDialog(Toplevel):
         self.text_list_old.config(state=DISABLED)
     def doCk(self, event=None):
         print("RenameDialog.doCk()")
-        if self.int_ck.get() == 1:
-            print(self.int_ck.get())
+        if self.int_ck.get():
+            self.entry_name_1.config(state=NORMAL)
+            self.gen_choose.config(state=NORMAL)
+            self.entry_name_3.config(state=NORMAL)
             if self.str_name_1.get() == "":
                 self.str_name_1.set(self.list_fileName[0].split(".")[0])
                 self.str_name_3.set(self.list_fileName[0].split(".")[1])
@@ -87,26 +90,30 @@ class RenameDialog(Toplevel):
                 self.text_input.insert(END, new_name + "\n")
         else:
             print(self.int_ck.get())
-            self.str_name_1.set("")
-            self.str_name_2.set("")
-            self.str_name_3.set("")
+            self.entry_name_1.config(state=DISABLED)
+            self.entry_name_3.config(state=DISABLED)
+            self.gen_choose.config(state=DISABLED)
 
     def doRename(self):
         print("RenameDialog.doRename...")
         str_input = self.text_input.get(1.0,END)
         list_name_new = []
-        list_temp = str_input.split("\n")
+        list_temp = []
         print(len(list_temp))
         print(len(self.list_files))
-        for i in range(len(list_temp)):
-            new_name = ''.join(list_temp[i].split())
+
+        for i in str_input.split("\n"):
+            new_name = ''.join(i.split())
             if new_name != "":
-                list_name_new.append(os.path.join(self.list_fileParentPath[i],new_name))
+                list_temp.append(new_name)
         print("========list_new_name========")
-        print(list_name_new)
+        print(list_temp)
         print("========self.list_files======")
         print(self.list_files)
-        if len(self.list_files) == len(list_name_new):
+        if len(list_temp) == len(self.list_fileParentPath):
+            for i in range(len(list_temp)):
+                list_name_new.append(os.path.join(self.list_fileParentPath[i],list_temp[i]))
             self.fileOptioner.renameFiles(self.list_files, list_name_new)
+            self.btn_doRe.config(text="重命名完成", background="LightGreen", state=DISABLED)
         else:
             messagebox.showerror(title="ERROR", message="文件 与 文件名 数量不一致！")

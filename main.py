@@ -11,8 +11,10 @@ from renameDialog import RenameDialog
 
 class App():
     def __init__(self, master):
-        master.title("Mini Search")
         self.master = master
+        self.master.title("Mini Search")
+        self.master.geometry('800x600')
+        self.master.iconbitmap("search.ico")
         self.query = StringVar()
         self.list_all_file = []
         self.result = []
@@ -32,10 +34,10 @@ class App():
             menu.post(event.x_root, event.y_root)
         master.bind("<Button-3>",popupmenu)
 
-        f_top = Frame(f, relief=GROOVE, bd=2)
+        f_top = Frame(f)
         f_center = Frame(f, relief=GROOVE,bd=2)
         f_state = Frame(f, relief=GROOVE,bd=2)
-        f_top.pack(side=TOP, fill=X)
+        f_top.pack(side=TOP, fill=X, padx=20)
         f_center.pack(side=TOP, fill=BOTH, expand=True)
         f_state.pack(side=TOP, fill=X)
 
@@ -51,7 +53,7 @@ class App():
         Label(f_state, textvariable=self.str_select_count).pack(side=LEFT)
         Label(f_state, text="    process: ").pack(side=LEFT)
         Label(f_state, textvariable=self.str_process_bar).pack(side=LEFT)
-        Button(f_state, text="<", command=self.toNextPage).pack(side=RIGHT)
+        Button(f_state, text=">", command=self.toNextPage).pack(side=RIGHT)
         self.int_page = IntVar()
         self.int_page.set(1)
         Label(f_state, textvariable=self.int_page).pack(side=RIGHT)
@@ -64,11 +66,13 @@ class App():
         entry_path = Entry(f_path, textvariable=self.input_path)
         entry_path.pack(side=LEFT)
         entry_path.bind("<Return>",self.doTask_loadPath)
-        Button(f_path, text=" Go->", command=self.doTask_loadPath).pack(side=LEFT)
+        Button(f_path, text=" Go ", command=self.doTask_loadPath).pack(side=LEFT)
+        self.int_recursive = IntVar()
+        Checkbutton(f_path, text="递归", variable=self.int_recursive).pack(side=LEFT)
 
         f_search = Frame(f_top, relief=GROOVE,bd=2)
         f_search.pack(side=LEFT)
-        f_search_1 = Frame(f_search, relief=GROOVE, bd=2)
+        f_search_1 = Frame(f_search)
         f_search_1.pack(side=TOP)
         f_search_2 = Frame(f_search, relief=GROOVE, bd=2)
         f_search_2.pack(side=TOP)
@@ -76,8 +80,7 @@ class App():
         entry_search = Entry(f_search_1, textvariable=self.query)
         entry_search.pack(side=LEFT)
         entry_search.bind("<Return>",self.doTask_search)
-        Button(f_search_1, text=" Go->", command=self.doTask_search).pack(side=LEFT)
-        Button(f_search_1, text="清除缓存", command=self.doFlushCache).pack(side=LEFT)
+        Button(f_search_1, text=" Go ", command=self.doTask_search).pack(side=LEFT)
         
         self.list_diskSymbol = self.myFileOption.getDiskSymbol()
         self.list_diskSymbol_flag = []
@@ -86,13 +89,22 @@ class App():
             self.list_diskSymbol_flag.append(IntVar())
             self.list_file_each_disk.append([])
             Checkbutton(f_search_2, text=diskSymbol, variable=self.list_diskSymbol_flag[i]).pack(side=LEFT)
+        Button(f_search_2, text="清除缓存", command=self.doFlushCache).pack(side=LEFT)
 
         self.scrollbar = Scrollbar(f_center)
         # self.list_file_box = Listbox(f_center, selectmode=MULTIPLE, yscrollcommand=self.scrollbar.set)
-        self.tree = ttk.Treeview(f_center,columns=['filename','abspath','size','a_time','m_time','c_time'],
+        self.tree = ttk.Treeview(f_center,columns=['filytype','filename','abspath','size','a_time','m_time','c_time'],
                                 selectmode=EXTENDED,show='headings',
                                 yscrollcommand=self.scrollbar.set)
-        self.tree.heading('filename',text='文件名')
+        self.tree.column('filytype',width=4,anchor=CENTER)
+        self.tree.column('filename',width=200,anchor=CENTER)
+        self.tree.column('abspath',width=200)
+        self.tree.column('size',width=20,anchor=CENTER)
+        self.tree.column('a_time',width=20,anchor=CENTER)
+        self.tree.column('m_time',width=20,anchor=CENTER)
+        self.tree.column('c_time',width=20,anchor=CENTER)
+        self.tree.heading('filytype',text='类型',command=self.sortByType)
+        self.tree.heading('filename',text='文件名',command=self.sortByName)
         self.tree.heading('abspath',text='路径')
         self.tree.heading('size',text='文件大小',command=self.sortBySize)
         self.tree.heading('a_time',text='访问时间',command=self.sortByATime)
@@ -144,7 +156,7 @@ class App():
         self.result = []
         query_ = self.query.get()
         # '\', '*' 不能作为搜索条件, 有 bug
-        if query_ == '\\' or query_ == '*':
+        if query_ == '\\' or query_ == '*' or query_=="":
             return 1
         for f in self.list_all_file:
             if re.search(query_,f[1]):
@@ -167,6 +179,10 @@ class App():
         self.FLAG_SIZE_SORT = not self.FLAG_SIZE_SORT
         self.show()
     
+    def sortByType(self):
+        self.sort(0)
+    def sortByName(self):
+        self.sort(1)
     def sortBySize(self):
         self.sort(3)
     def sortByATime(self):
@@ -194,7 +210,7 @@ class App():
         for i in self.tree.get_children():
             self.tree.delete(i)
         for item in self.result[100 * (self.int_page.get() - 1) : 100 * self.int_page.get()]:
-            self.tree.insert('','end',values=item[1:])
+            self.tree.insert('','end',values=item)
         self.flashState()
 
     async def doSearch(self, event=None):
@@ -204,18 +220,19 @@ class App():
             self.getAllFiles()
             self.searchFile()
         else :
-            self.result = self.myFileOption.listDir(self.input_path.get())
+            self.result = self.myFileOption.listDir(self.input_path.get(), self.int_recursive.get())
         # self.searchFile_with_db()
+        self.int_page.set(1)
         self.flashState()
     
     def getSelectionFileAbsPath(self):
         list_ = []
         for i in self.tree.selection():
-            list_.append(self.tree.item(i).get('values')[1])
+            list_.append(self.tree.item(i).get('values')[2])
         return list_
     
     def doOpenPath(self, event):
-        cmd_comm = "explorer /select, " + self.tree.item(self.tree.selection()[0]).get('values')[1]
+        cmd_comm = "explorer /select, " + self.tree.item(self.tree.selection()[0]).get('values')[2]
         print(cmd_comm)
         os.system(cmd_comm)
     def doDelete(self):
